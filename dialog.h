@@ -4,6 +4,16 @@
 #include <QDialog>
 #include <windows.h>
 #include <tchar.h>
+#include <QMenuBar>
+#include <QMenu>
+#include "impaddrtbl.h"
+
+extern PBYTE pAddr;
+extern PIMAGE_DOS_HEADER pDosHdr;
+extern PIMAGE_FILE_HEADER pFileHdr;
+extern PIMAGE_OPTIONAL_HEADER pOptHdr;
+extern PIMAGE_NT_HEADERS pNtHeaders;
+extern PIMAGE_SECTION_HEADER pSecHdr;
 
 namespace Ui {
 class Dialog;
@@ -42,21 +52,23 @@ private:
 
 
     void FontMgr();
+    void allocateMemFromHeaps();
 
-    DWORD RVAToOffset(DWORD dwRVA); // 暂存
-private:
-    Ui::Dialog *ui;
-
-    PBYTE m_pAddr;
-    QString m_strFilePathName;
-    PIMAGE_DOS_HEADER m_pDosHdr;
-    PIMAGE_FILE_HEADER m_pFileHdr;
-    PIMAGE_OPTIONAL_HEADER m_pOptHdr;
-    PIMAGE_NT_HEADERS m_pNtHeaders;
-    PIMAGE_SECTION_HEADER m_pSecHdr;
+    DWORD RVAToOffset(DWORD dwRVA);
 
     int m_iNumOfSections;
 
+//    struct _BASEPEINFO {
+//        PIMAGE_DOS_HEADER pDosHdr;
+//        PIMAGE_FILE_HEADER pFileHdr;
+//        PIMAGE_OPTIONAL_HEADER pOptHdr;
+//        PIMAGE_NT_HEADERS pNtHeaders;
+//        PIMAGE_SECTION_HEADER pSecHdr;
+//        int iNumOfSections;
+//    } BasePeInfo;
+
+    Ui::Dialog *ui;
+    QString m_strFilePathName;
     enum ColNum {
         colSecName = 0,
         colSecSize,
@@ -65,6 +77,14 @@ private:
         colRawFileOfst,
         colSecAttr
     };
+
+    ImpAddrTbl *m_pIAT;
+public:
+    QMenuBar *m_pMenuBar;
+    QMenu *m_pMenuFile;
+    QAction *m_pFile_Open;
+    QAction *m_pFile_Exit;
+    QMenu *m_pMenuEdit;
 };
 
 #endif // DIALOG_H

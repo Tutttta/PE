@@ -25,13 +25,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        dialog.cpp
+        dialog.cpp \
+    impaddrtbl.cpp \
+    pebase.cpp
 
 HEADERS += \
-        dialog.h
+        dialog.h \
+    impaddrtbl.h \
+    pebase.h
 
 FORMS += \
         dialog.ui
 
 RESOURCES += \
     res.qrc
+
+CONFIG += C++11

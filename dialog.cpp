@@ -11,18 +11,23 @@
 #include <QTableWidgetItem>
 #include <QMainWindow>
 
-
+PIMAGE_DOS_HEADER pDosHdr = NULL;
+PIMAGE_FILE_HEADER pFileHdr = NULL;
+PIMAGE_OPTIONAL_HEADER pOptHdr = NULL;
+PIMAGE_NT_HEADERS pNtHeaders = NULL;
+PIMAGE_SECTION_HEADER pSecHdr = NULL;
+PBYTE pAddr = NULL;
 
 Dialog::Dialog(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::Dialog), m_strFilePathName(""), m_pDosHdr(NULL),
-    m_pNtHeaders(NULL), m_pFileHdr(NULL), m_pOptHdr(NULL), m_pAddr(NULL)
+    ui(new Ui::Dialog), m_strFilePathName(""), m_pMenuBar(NULL), m_pMenuEdit(NULL),
+    m_pMenuFile(NULL), m_pFile_Exit(NULL), m_pFile_Open(NULL)
 {
-
-
     ui->setupUi(this);
+
     InitConnections();
     InitTblWidget();
+    allocateMemFromHeaps();
     FontMgr();
 
     setWindowIcon(QIcon(":/ico/images/Show.bmp"));
@@ -30,11 +35,28 @@ Dialog::Dialog(QWidget *parent) :
 
 }
 
+
+// 未完成
+void Dialog::allocateMemFromHeaps()
+{
+    m_pMenuBar = new QMenuBar(this);
+    m_pMenuBar->setGeometry(QRect(0, 0, 510, 21));
+
+    m_pMenuFile = m_pMenuBar->addMenu("&文件");
+    m_pFile_Open = m_pMenuFile->addAction("&打开");
+    m_pFile_Exit = m_pMenuFile->addAction("&退出");
+
+    m_pMenuEdit = m_pMenuBar->addMenu("&编辑");
+
+
+}
+
+
 Dialog::~Dialog()
 {
-    if (NULL != m_pAddr) {
-        UnmapViewOfFile(m_pAddr);
-        m_pAddr = NULL;
+    if (NULL != pAddr) {
+        UnmapViewOfFile(pAddr);
+        pAddr = NULL;
     }
 
     delete ui;
@@ -89,8 +111,8 @@ bool Dialog::FileMappingToMem()
         qDebug() << "CreateFileMapping filed: " << GetLastError();
         return(false);
     }
-    m_pAddr = (PBYTE)MapViewOfFile(hFileMapping, FILE_MAP_READ, 0, 0, 0);
-    if (NULL == m_pAddr) {
+    pAddr = (PBYTE)MapViewOfFile(hFileMapping, FILE_MAP_READ, 0, 0, 0);
+    if (NULL == pAddr) {
         CloseHandle(hFile);
         CloseHandle(hFileMapping);
         qDebug() << "MapViewOfFile failed: " << GetLastError() << endl;
@@ -104,16 +126,16 @@ bool Dialog::FileMappingToMem()
 
 bool Dialog::isFileisPortableExecute()
 {
-    if (NULL == m_pAddr) {
+    if (NULL == pAddr) {
         if (!FileMappingToMem())
             return(false);
     }
-    m_pDosHdr = (PIMAGE_DOS_HEADER)(m_pAddr);
-    m_pNtHeaders = (PIMAGE_NT_HEADERS)(m_pAddr + m_pDosHdr->e_lfanew);
-    m_pFileHdr = (PIMAGE_FILE_HEADER)(&m_pNtHeaders->FileHeader);
-    m_pOptHdr = (PIMAGE_OPTIONAL_HEADER)(&m_pNtHeaders->OptionalHeader);
-    m_pSecHdr = (PIMAGE_SECTION_HEADER)(m_pAddr + m_pDosHdr->e_lfanew + sizeof(IMAGE_NT_HEADERS));
-    if (IMAGE_DOS_SIGNATURE == m_pDosHdr->e_magic && IMAGE_NT_SIGNATURE == m_pNtHeaders->Signature)
+    pDosHdr = (PIMAGE_DOS_HEADER)(pAddr);
+    pNtHeaders = (PIMAGE_NT_HEADERS)(pAddr + pDosHdr->e_lfanew);
+    pFileHdr = (PIMAGE_FILE_HEADER)(&pNtHeaders->FileHeader);
+    pOptHdr = (PIMAGE_OPTIONAL_HEADER)(&pNtHeaders->OptionalHeader);
+    pSecHdr = (PIMAGE_SECTION_HEADER)(pAddr + pDosHdr->e_lfanew + sizeof(IMAGE_NT_HEADERS));
+    if (IMAGE_DOS_SIGNATURE == pDosHdr->e_magic && IMAGE_NT_SIGNATURE == pNtHeaders->Signature)
         return(true);
     else
         return(false);
@@ -122,44 +144,44 @@ bool Dialog::isFileisPortableExecute()
 QString Dialog::GetPlatFormType()
 {
     char szPltType[11] = {0};
-    if (!m_pFileHdr) {
+    if (!pFileHdr) {
         qDebug() << "GetPlatFormType failed!";
         return("");
     }
 
-    return(QString::asprintf("0x%04X", m_pFileHdr->Machine));
+    return(QString::asprintf("0x%04X", pFileHdr->Machine));
 }
 
 QString Dialog::GetNumberOfSections()
 {
     char szSecNums[11] = {0};
-    if (!m_pFileHdr) {
+    if (!pFileHdr) {
         qDebug() << "GetNumberOfSections failed!";
         return("");
     }
-    m_iNumOfSections = m_pFileHdr->NumberOfSections;
+    m_iNumOfSections = pFileHdr->NumberOfSections;
 
-    return(QString::asprintf("%d", m_pFileHdr->NumberOfSections));
+    return(QString::asprintf("%d", pFileHdr->NumberOfSections));
 }
 
 QString Dialog::GetBaseImageAddr()
 {
-    if (!m_pOptHdr) {
+    if (!pOptHdr) {
         qDebug() << "GetBaseImageAddr failed!";
         return("");
     }
 
-    return(QString::asprintf("0x%08X", m_pOptHdr->ImageBase));
+    return(QString::asprintf("0x%08X", pOptHdr->ImageBase));
 }
 
 QString Dialog::GetFileMark()
 {
-    if (!m_pOptHdr) {
+    if (!pOptHdr) {
         qDebug() << "GetFileMark failed!";
         return("");
     }
 
-    return(QString::asprintf("0x%04X", m_pOptHdr->Magic));
+    return(QString::asprintf("0x%04X", pOptHdr->Magic));
 }
 
 void Dialog::GetSectionInfo()
@@ -170,8 +192,8 @@ void Dialog::GetSectionInfo()
     DWORD dwRawFileSize;
     DWORD dwRawFileOffset;
     DWORD dwSecCharacteristics;
-    PIMAGE_SECTION_HEADER pTmp = m_pSecHdr;
-    if (!m_pSecHdr && m_iNumOfSections <= 0) {
+    PIMAGE_SECTION_HEADER pTmp = pSecHdr;
+    if (!pSecHdr && m_iNumOfSections <= 0) {
         qDebug() << "GetSectionInfo failed!";
         return;
     }
@@ -251,11 +273,15 @@ void Dialog::on_btnQuery_clicked()
         qDebug() << "on_btnQuery_clicked failed" << endl;
         return;
     }
+    // 必须要让isFileisPortableExecute先执行，不然全局变量未被赋值
+    m_pIAT = new ImpAddrTbl;
+
     ui->editPlatform->setText(GetPlatFormType());
     ui->editFileMark->setText(GetFileMark());
     ui->editSectionNum->setText(GetNumberOfSections());
     ui->editAdvLoadAddr->setText(GetBaseImageAddr());
     GetSectionInfo();
+    m_pIAT->ShowImportedDllsName();
 }
 
 void Dialog::InitTblWidget()
