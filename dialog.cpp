@@ -11,6 +11,8 @@
 #include <QTableWidgetItem>
 #include <QMainWindow>
 
+
+
 PIMAGE_DOS_HEADER pDosHdr = NULL;
 PIMAGE_FILE_HEADER pFileHdr = NULL;
 PIMAGE_OPTIONAL_HEADER pOptHdr = NULL;
@@ -31,6 +33,9 @@ Dialog::Dialog(QWidget *parent) :
     FontMgr();
 
     setWindowIcon(QIcon(":/ico/images/Show.bmp"));
+    QStringList strList;
+    strList << "属性名" << "RVA" << "文件偏移";
+    InitIATPartTbl(3, 3, strList);
     this->setFixedSize(510, 550);
 
 }
@@ -49,6 +54,7 @@ void Dialog::allocateMemFromHeaps()
     m_pMenuEdit = m_pMenuBar->addMenu("&编辑");
 
 
+
 }
 
 
@@ -58,6 +64,10 @@ Dialog::~Dialog()
         UnmapViewOfFile(pAddr);
         pAddr = NULL;
     }
+    if (NULL != m_pIAT) {
+        delete m_pIAT;
+        m_pIAT = NULL;
+    }
 
     delete ui;
 }
@@ -66,8 +76,17 @@ void Dialog::InitConnections()
 {
     //connect(ui->btnBrowse, &QPushButton::clicked, this, &Dialog::on_btnBrowse_clicked);
     //connect(ui->btnExit, &QPushButton::clicked, this, &Dialog::on_btnExit_clicked);
-
+    //    connect(ui->btnCalc, &QPushButton::clicked, this, &Dialog::on_btnCalc_clicked);
 }
+
+
+//void Dialog::on_btnCalc_clicked()
+//{
+//    QString strRVA = ui->lineEditRVA->text();
+
+//    long long lRVA = strRVA.toInt(nullptr, 16);
+//    qDebug() << "转成的文件偏移: " << m_pPEBaseFunc->_RVAToOffset(pAddr, lRVA);
+//}
 
 
 void Dialog::on_btnBrowse_clicked()
@@ -210,6 +229,24 @@ void Dialog::GetSectionInfo()
     }
 }
 
+void Dialog::InitIATPartTbl(int iRowNum, int iColNum, const QStringList &strHeaderList) {
+    QTableWidgetItem *headeritem = NULL;
+    // 首先确定列数
+    int iColNums = strHeaderList.count();
+    // 把头行的各项加入table中
+    ui->tbl_IAT->setColumnCount(iColNums);
+    for (int i = 0; i < iColNums; ++i) {
+        headeritem = new QTableWidgetItem(strHeaderList.at(i));
+        // 设置字体粗体和字号
+        QFont font = headeritem->font();
+        font.setBold(true);
+        font.setPointSize(12);
+        headeritem->setFont(font);
+        ui->tbl_IAT->setHorizontalHeaderItem(i, headeritem);
+    }
+
+}
+
 void Dialog::CreateRowItems(int iRowNum, QString &strName, DWORD dwSecSize, DWORD dwVirAddr, DWORD dwRawSize, DWORD dwRawOffset, DWORD dwAttrs)
 {
     QTableWidgetItem *item = NULL;
@@ -273,6 +310,7 @@ void Dialog::on_btnQuery_clicked()
         qDebug() << "on_btnQuery_clicked failed" << endl;
         return;
     }
+
     // 必须要让isFileisPortableExecute先执行，不然全局变量未被赋值
     m_pIAT = new ImpAddrTbl;
 
@@ -280,8 +318,13 @@ void Dialog::on_btnQuery_clicked()
     ui->editFileMark->setText(GetFileMark());
     ui->editSectionNum->setText(GetNumberOfSections());
     ui->editAdvLoadAddr->setText(GetBaseImageAddr());
-    GetSectionInfo();
-    m_pIAT->ShowImportedDllsName();
+    GetSectionInfo(); // 获取PE基本信息
+
+    m_pIAT->AnalyszImportAddrTbl(); // 让impaddrtbl解析导入地址表
+
+    for (int i = 0; i < m_pIAT->GetDllNamesVec().size(); ++i) {
+        ui->comboDllList->addItem((m_pIAT->GetDllNamesVec())[i]);
+    }
 }
 
 void Dialog::InitTblWidget()

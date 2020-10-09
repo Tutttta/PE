@@ -15,7 +15,6 @@ public slots:
 
 protected:
     DWORD _RVAToOffset(PBYTE pAddr, DWORD dwRVA);
-    DWORD _RVAToOffset(DWORD dwRVA);
 };
 
 #endif // PEBASE_H

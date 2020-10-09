@@ -5,8 +5,10 @@
 #include <windows.h>
 #include <tchar.h>
 #include <QMenuBar>
+#include <QTableWidget>
 #include <QMenu>
 #include "impaddrtbl.h"
+#include "pebase.h"
 
 extern PBYTE pAddr;
 extern PIMAGE_DOS_HEADER pDosHdr;
@@ -22,7 +24,6 @@ class Dialog;
 class Dialog : public QDialog
 {
     Q_OBJECT
-
 public:
     explicit Dialog(QWidget *parent = 0);
     ~Dialog();
@@ -35,8 +36,11 @@ private slots:
 
     void on_btnQuery_clicked();
 
+  //  void on_btnCalc_clicked();
+
 private:
     void InitTblWidget();
+    void InitIATPartTbl(int iRowNum, int iColNum, const QStringList &strHeaderList);
 
     bool FileMappingToMem();
     bool isFileisPortableExecute();
@@ -85,6 +89,9 @@ public:
     QAction *m_pFile_Open;
     QAction *m_pFile_Exit;
     QMenu *m_pMenuEdit;
+
+
+    PEBase *m_pPEBaseFunc;
 };
 
 #endif // DIALOG_H

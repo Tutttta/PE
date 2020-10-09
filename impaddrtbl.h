@@ -12,17 +12,20 @@ class ImpAddrTbl : public PEBase
 public:
     explicit ImpAddrTbl();
 
-    void ShowImportedDllsName();
+    void AnalyszImportAddrTbl();
 
 signals:
 
 public slots:
 
+public:
+    const QVector<QString> &GetDllNamesVec() const {
+        return(m_VecDllName);
+    }
 
 private:
     PIMAGE_IMPORT_DESCRIPTOR m_pImplDesc;
     QVector<QString> m_VecDllName;
-
 
 };
 
